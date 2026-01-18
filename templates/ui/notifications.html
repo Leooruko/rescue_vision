@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications - Rescue Vision{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-900 mb-2">Notifications</h1>
+    <p class="text-gray-600">Detection alerts and updates for your cases</p>
+</div>
+
+{% if notifications %}
+<div class="space-y-4">
+    {% for notification in notifications %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="flex items-start space-x-4">
+            <div class="w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
+                <img src="{{ notification.matched_image.url }}" alt="Detection" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1">
+                <div class="flex items-start justify-between mb-2">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-1">{{ notification.message }}</h3>
+                        <p class="text-sm text-gray-600 mb-1">
+                            Case: <a href="{% url 'ui:case_detail' notification.missing_person.id %}" class="text-purple-600 hover:text-purple-700">{{ notification.missing_person.name }}</a>
+                        </p>
+                        <p class="text-sm text-gray-500">{{ notification.detection_timestamp|date:"F d, Y at g:i A" }}</p>
+                    </div>
+                    <span class="status-badge {% if notification.status == 'PENDING' %}status-pending{% elif notification.status == 'CONFIRMED' %}status-confirmed{% else %}status-dismissed{% endif %}">
+                        {{ notification.get_status_display }}
+                    </span>
+                </div>
+                {% if notification.status == 'PENDING' %}
+                <div class="flex space-x-2 mt-4">
+                    <button onclick="confirmNotification('{{ notification.id }}')" class="bg-green-50 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 transition text-sm">
+                        <i class="fas fa-check mr-1"></i> Confirm Match
+                    </button>
+                    <button onclick="dismissNotification('{{ notification.id }}')" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm">
+                        <i class="fas fa-times mr-1"></i> Dismiss
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-md p-12 text-center">
+    <i class="fas fa-bell-slash text-gray-300 text-6xl mb-4"></i>
+    <h3 class="text-xl font-semibold text-gray-700 mb-2">No Notifications</h3>
+    <p class="text-gray-500">You don't have any notifications yet.</p>
+</div>
+{% endif %}
+
+<script>
+async function confirmNotification(notificationId) {
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/notifications/${notificationId}/confirm/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error confirming notification');
+        }
+    } catch (error) {
+        alert('Error confirming notification: ' + error.message);
+    }
+}
+
+async function dismissNotification(notificationId) {
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/notifications/${notificationId}/dismiss/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error dismissing notification');
+        }
+    } catch (error) {
+        alert('Error dismissing notification: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

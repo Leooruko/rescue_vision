@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Rescue Vision - Missing Persons{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-900 mb-2">Missing Persons</h1>
+    <p class="text-gray-600">Help us find missing persons. Report a case or view active cases below.</p>
+</div>
+
+{% if user.is_authenticated %}
+<div class="mb-6">
+    <a href="{% url 'ui:dashboard' %}" class="btn-primary text-white px-6 py-3 rounded-lg inline-flex items-center">
+        <i class="fas fa-plus mr-2"></i> Report Missing Person
+    </a>
+</div>
+{% else %}
+<div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+    <p class="text-purple-800">
+        <i class="fas fa-info-circle mr-2"></i>
+        Please <a href="{% url 'ui:signin' %}" class="font-semibold underline">sign in</a> or <a href="{% url 'ui:signup' %}" class="font-semibold underline">sign up</a> to report a missing person.
+    </p>
+</div>
+{% endif %}
+
+<!-- Cases Grid -->
+{% if cases %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for case in cases %}
+    <div class="card bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="h-64 bg-gray-200 relative">
+            {% if case.images.first %}
+                <img src="{{ case.images.first.image.url }}" alt="{{ case.name }}" class="w-full h-full object-cover">
+            {% else %}
+                <div class="w-full h-full flex items-center justify-center text-gray-400">
+                    <i class="fas fa-user-circle text-6xl"></i>
+                </div>
+            {% endif %}
+            <div class="absolute top-4 right-4">
+                <span class="status-badge {% if case.status == 'ACTIVE' %}status-active{% else %}status-closed{% endif %}">
+                    {{ case.get_status_display }}
+                </span>
+            </div>
+        </div>
+        <div class="p-6">
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ case.name }}</h3>
+            <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ case.description|truncatewords:20 }}</p>
+            <div class="flex items-center justify-between text-sm text-gray-500">
+                <span><i class="far fa-calendar mr-1"></i> {{ case.created_at|date:"M d, Y" }}</span>
+                {% if user.is_authenticated and case.reporter == user %}
+                    <a href="{% url 'ui:case_detail' case.id %}" class="text-purple-600 hover:text-purple-700 font-medium">
+                        View Details <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-md p-12 text-center">
+    <i class="fas fa-search text-gray-300 text-6xl mb-4"></i>
+    <h3 class="text-xl font-semibold text-gray-700 mb-2">No Active Cases</h3>
+    <p class="text-gray-500">There are currently no active missing person cases.</p>
+</div>
+{% endif %}
+{% endblock %}

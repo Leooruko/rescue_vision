@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}My Cases - Rescue Vision{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex justify-between items-center">
+    <div>
+        <h1 class="text-4xl font-bold text-gray-900 mb-2">My Cases</h1>
+        <p class="text-gray-600">Manage your reported missing person cases</p>
+    </div>
+    <button onclick="showCreateCaseModal()" class="btn-primary text-white px-6 py-3 rounded-lg inline-flex items-center">
+        <i class="fas fa-plus mr-2"></i> Report Missing Person
+    </button>
+</div>
+
+<!-- Cases List -->
+{% if cases %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for case in cases %}
+    <div class="card bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="h-64 bg-gray-200 relative">
+            {% if case.images.first %}
+                <img src="{{ case.images.first.image.url }}" alt="{{ case.name }}" class="w-full h-full object-cover">
+            {% else %}
+                <div class="w-full h-full flex items-center justify-center text-gray-400">
+                    <i class="fas fa-user-circle text-6xl"></i>
+                </div>
+            {% endif %}
+            <div class="absolute top-4 right-4">
+                <span class="status-badge {% if case.status == 'ACTIVE' %}status-active{% else %}status-closed{% endif %}">
+                    {{ case.get_status_display }}
+                </span>
+            </div>
+        </div>
+        <div class="p-6">
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ case.name }}</h3>
+            <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ case.description|truncatewords:20 }}</p>
+            <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
+                <span><i class="far fa-calendar mr-1"></i> {{ case.created_at|date:"M d, Y" }}</span>
+                <span><i class="fas fa-images mr-1"></i> {{ case.images.count }} image{{ case.images.count|pluralize }}</span>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{% url 'ui:case_detail' case.id %}" class="flex-1 text-center bg-purple-50 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-100 transition">
+                    View Details
+                </a>
+                {% if case.status == 'ACTIVE' %}
+                <button onclick="closeCase('{{ case.id }}')" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                    Close
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-md p-12 text-center">
+    <i class="fas fa-folder-open text-gray-300 text-6xl mb-4"></i>
+    <h3 class="text-xl font-semibold text-gray-700 mb-2">No Cases Yet</h3>
+    <p class="text-gray-500 mb-6">Start by reporting a missing person case.</p>
+    <button onclick="showCreateCaseModal()" class="btn-primary text-white px-6 py-3 rounded-lg inline-flex items-center">
+        <i class="fas fa-plus mr-2"></i> Report Missing Person
+    </button>
+</div>
+{% endif %}
+
+<!-- Create Case Modal -->
+<div id="createCaseModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Report Missing Person</h2>
+        <form id="createCaseForm" class="space-y-4" method="post">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                <input type="file" name="image" accept="image/*" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div class="flex space-x-3">
+                <button type="submit" class="flex-1 btn-primary text-white px-4 py-2 rounded-lg">Create Case</button>
+                <button type="button" onclick="hideCreateCaseModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showCreateCaseModal() {
+    document.getElementById('createCaseModal').classList.remove('hidden');
+}
+
+function hideCreateCaseModal() {
+    document.getElementById('createCaseModal').classList.add('hidden');
+}
+
+document.getElementById('createCaseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    try {
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Create case
+        const caseData = {
+            name: formData.get('name'),
+            description: formData.get('description') || ''
+        };
+        
+        const caseFormData = new FormData();
+        caseFormData.append('name', caseData.name);
+        caseFormData.append('description', caseData.description);
+        caseFormData.append('csrfmiddlewaretoken', csrftoken);
+        
+        const response = await fetch('/api/cases/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include',
+            body: caseFormData
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Upload image
+            if (formData.get('image')) {
+                const imageFormData = new FormData();
+                imageFormData.append('image', formData.get('image'));
+                imageFormData.append('csrfmiddlewaretoken', csrftoken);
+                
+                await fetch(`/api/cases/${data.id}/images/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    credentials: 'include',
+                    body: imageFormData
+                });
+            }
+            hideCreateCaseModal();
+            window.location.reload();
+        } else {
+            const error = await response.json();
+            alert('Error creating case: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error creating case: ' + error.message);
+    }
+});
+
+async function closeCase(caseId) {
+    if (!confirm('Are you sure you want to close this case?')) return;
+    
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/cases/${caseId}/close/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error closing case');
+        }
+    } catch (error) {
+        alert('Error closing case: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

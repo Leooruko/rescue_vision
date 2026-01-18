@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ case.name }} - Rescue Vision{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{% url 'ui:dashboard' %}" class="text-purple-600 hover:text-purple-700 mb-4 inline-flex items-center">
+        <i class="fas fa-arrow-left mr-2"></i> Back to My Cases
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="md:flex">
+        <!-- Image Gallery -->
+        <div class="md:w-1/2 bg-gray-100 p-6">
+            {% if case.images.all %}
+            <div class="grid grid-cols-2 gap-4">
+                {% for image in case.images.all %}
+                <div class="aspect-square rounded-lg overflow-hidden">
+                    <img src="{{ image.image.url }}" alt="{{ case.name }}" class="w-full h-full object-cover">
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="h-64 flex items-center justify-center text-gray-400">
+                <i class="fas fa-user-circle text-8xl"></i>
+            </div>
+            {% endif %}
+            
+            {% if case.status == 'ACTIVE' %}
+            <div class="mt-6">
+                <form id="uploadImageForm" class="flex items-center space-x-2" method="post">
+                    {% csrf_token %}
+                    <input type="file" name="image" accept="image/*" required class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                    <button type="submit" class="btn-primary text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-upload mr-1"></i> Upload
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Case Details -->
+        <div class="md:w-1/2 p-8">
+            <div class="flex items-start justify-between mb-4">
+                <h1 class="text-3xl font-bold text-gray-900">{{ case.name }}</h1>
+                <span class="status-badge {% if case.status == 'ACTIVE' %}status-active{% else %}status-closed{% endif %}">
+                    {{ case.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 mb-1">Description</h3>
+                    <p class="text-gray-900">{{ case.description|default:"No description provided." }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 mb-1">Reported By</h3>
+                    <p class="text-gray-900">{{ case.reporter.username }}</p>
+                    {% if case.reporter.email %}
+                    <p class="text-gray-600 text-sm">{{ case.reporter.email }}</p>
+                    {% endif %}
+                    {% if case.reporter.phone_number %}
+                    <p class="text-gray-600 text-sm">{{ case.reporter.phone_number }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 mb-1">Reported On</h3>
+                    <p class="text-gray-900">{{ case.created_at|date:"F d, Y at g:i A" }}</p>
+                </div>
+            </div>
+            
+            {% if case.status == 'ACTIVE' %}
+            <div class="flex space-x-3">
+                <button onclick="closeCase('{{ case.id }}')" class="flex-1 bg-red-50 text-red-700 px-4 py-2 rounded-lg hover:bg-red-100 transition">
+                    <i class="fas fa-times mr-2"></i> Close Case
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Notifications Section -->
+{% if notifications %}
+<div class="mt-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Detection Notifications</h2>
+    <div class="space-y-4">
+        {% for notification in notifications %}
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-start space-x-4">
+                <div class="w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
+                    <img src="{{ notification.matched_image.url }}" alt="Detection" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h3 class="font-semibold text-gray-900">{{ notification.message }}</h3>
+                            <p class="text-sm text-gray-500">{{ notification.detection_timestamp|date:"F d, Y at g:i A" }}</p>
+                        </div>
+                        <span class="status-badge {% if notification.status == 'PENDING' %}status-pending{% elif notification.status == 'CONFIRMED' %}status-confirmed{% else %}status-dismissed{% endif %}">
+                            {{ notification.get_status_display }}
+                        </span>
+                    </div>
+                    {% if notification.status == 'PENDING' %}
+                    <div class="flex space-x-2 mt-4">
+                        <button onclick="confirmNotification('{{ notification.id }}')" class="bg-green-50 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 transition text-sm">
+                            <i class="fas fa-check mr-1"></i> Confirm
+                        </button>
+                        <button onclick="dismissNotification('{{ notification.id }}')" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm">
+                            <i class="fas fa-times mr-1"></i> Dismiss
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.getElementById('uploadImageForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch('/api/cases/{{ case.id }}/images/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include',
+            body: formData
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const error = await response.json();
+            alert('Error uploading image: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error uploading image: ' + error.message);
+    }
+});
+
+async function closeCase(caseId) {
+    if (!confirm('Are you sure you want to close this case? This will stop detection for this person.')) return;
+    
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/cases/${caseId}/close/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error closing case');
+        }
+    } catch (error) {
+        alert('Error closing case: ' + error.message);
+    }
+}
+
+async function confirmNotification(notificationId) {
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/notifications/${notificationId}/confirm/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error confirming notification');
+        }
+    } catch (error) {
+        alert('Error confirming notification: ' + error.message);
+    }
+}
+
+async function dismissNotification(notificationId) {
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch(`/api/notifications/${notificationId}/dismiss/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Error dismissing notification');
+        }
+    } catch (error) {
+        alert('Error dismissing notification: ' + error.message);
+    }
+}
+</script>
+{% endblock %}
