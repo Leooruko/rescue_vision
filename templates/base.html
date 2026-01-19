@@ -74,7 +74,7 @@
                         </a>
                         <a href="{% url 'ui:notifications' %}" class="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium relative">
                             <i class="fas fa-bell mr-1"></i> Notifications
-                            {% if user.notifications.filter(status='PENDING').exists %}
+                            {% if has_pending_notifications %}
                                 <span class="absolute top-0 right-0 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
                             {% endif %}
                         </a>

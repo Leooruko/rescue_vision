@@ -5,7 +5,6 @@ Uses OpenCV Haar Cascade for face detection - optimized for Raspberry Pi.
 import os
 import numpy as np
 import pickle
-import cv2
 from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -19,6 +18,7 @@ try:
     OPENCV_AVAILABLE = True
 except ImportError:
     OPENCV_AVAILABLE = False
+    cv2 = None
     logger.error("OpenCV (cv2) not available. Install via: sudo apt-get install python3-opencv")
 
 
@@ -41,6 +41,9 @@ class MLService:
         
         # Load Haar Cascade classifier for face detection
         # OpenCV includes this cascade file - use cv2.data.haarcascades for reliable path
+        if not OPENCV_AVAILABLE or cv2 is None:
+            raise RuntimeError("OpenCV is required but not available")
+        
         try:
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
