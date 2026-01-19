@@ -3,10 +3,11 @@ djangorestframework>=3.14.0
 django-cors-headers>=4.0.0
 Pillow>=10.0.0
 numpy>=1.24.0
-opencv-python>=4.8.0
-face-recognition>=1.3.0
-dlib>=19.24.0
 requests>=2.31.0
+
+# Note: OpenCV should be installed via system package on Raspberry Pi:
+#   sudo apt-get install python3-opencv
+# Do NOT install opencv-python via pip as it may conflict with system package
 
 # Optional: For production
 # gunicorn>=21.2.0

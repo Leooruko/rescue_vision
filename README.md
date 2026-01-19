@@ -15,7 +15,7 @@ A complete Django-based web application for reporting and detecting missing pers
 
 - **Backend**: Django 4.2+, Django REST Framework
 - **Database**: SQLite (default), PostgreSQL (production)
-- **ML**: face-recognition library (pre-trained models)
+- **ML**: OpenCV Haar Cascade (face detection) - optimized for Raspberry Pi
 - **Frontend**: Django Templates + Tailwind CSS
 - **Integration**: RESTful APIs for Raspberry Pi C client
 
@@ -45,10 +45,11 @@ A complete Django-based web application for reporting and detecting missing pers
    pip install -r requirements.txt
    ```
 
-   **Note**: Installing `dlib` and `face-recognition` may require additional system dependencies:
-   - **Ubuntu/Debian**: `sudo apt-get install cmake libopenblas-dev liblapack-dev`
-   - **macOS**: `brew install cmake`
-   - **Windows**: Pre-built wheels are usually available via pip
+   **Note**: OpenCV should be installed via system package on Raspberry Pi:
+   - **Raspberry Pi (Debian)**: `sudo apt-get install python3-opencv`
+   - **Ubuntu/Debian**: `sudo apt-get install python3-opencv`
+   - **macOS**: `brew install opencv-python` or use pip: `pip install opencv-python`
+   - **Windows**: `pip install opencv-python`
 
 4. **Run migrations**
    ```bash
@@ -136,23 +137,25 @@ A sample C client (`raspberry_pi_client.c`) is provided in the `clients/` direct
 
 ## ML Service Configuration
 
-The ML service uses pre-trained face recognition models. Configuration is in `settings.py`:
+The ML service uses OpenCV Haar Cascade for face detection. Configuration is in `settings.py`:
 
 ```python
 ML_SERVICE_CONFIG = {
     'MAX_ACTIVE_CASES': 20,
-    'SIMILARITY_THRESHOLD': 0.6,  # Cosine similarity threshold
+    'SIMILARITY_THRESHOLD': 0.6,  # Histogram similarity threshold (0-1)
 }
 ```
 
 ### How It Works
 
-1. **Image Upload**: When a missing person image is uploaded, face embedding is extracted
-2. **Embedding Storage**: Embeddings are stored in memory cache and persisted to disk
-3. **Frame Processing**: Incoming frames are processed to extract face embeddings
-4. **Matching**: Cosine similarity is calculated against all stored embeddings
+1. **Image Upload**: When a missing person image is uploaded, faces are detected using Haar Cascade
+2. **Face Crop Storage**: Face crops are extracted and stored on disk for matching
+3. **Frame Processing**: Incoming frames are processed to detect faces using Haar Cascade
+4. **Matching**: Histogram comparison is used to match detected faces against stored face crops
 5. **Threshold Check**: If similarity exceeds threshold, match is detected
 6. **Notification**: User is notified of potential match
+
+**Note**: This system uses face detection and simple image comparison. For production use, consider upgrading to more advanced face recognition methods.
 
 ## Usage Guide
 
@@ -193,20 +196,22 @@ For production deployment:
 
 ## Troubleshooting
 
-### face-recognition Installation Issues
+### OpenCV Installation Issues
 
-If you encounter issues installing `face-recognition`:
+If you encounter issues with OpenCV:
 
-- **Linux**: Install system dependencies first (cmake, dlib dependencies)
-- **macOS**: Use Homebrew to install cmake
-- **Windows**: Use pre-built wheels or conda
+- **Raspberry Pi (Debian)**: Install via system package: `sudo apt-get install python3-opencv`
+- **Linux**: `sudo apt-get install python3-opencv` or `pip install opencv-python`
+- **macOS**: `brew install opencv-python` or `pip install opencv-python`
+- **Windows**: `pip install opencv-python`
 
 ### ML Service Not Working
 
-- Ensure `face-recognition` library is installed
-- Check logs in `logs/rescue_vision.log`
-- Verify images contain detectable faces
-- Adjust similarity threshold if needed
+- Ensure OpenCV is installed: `python3 -c "import cv2; print(cv2.__version__)"`
+- Check logs: `logs/rescue_vision.log`
+- Verify Haar Cascade classifier is loaded (check logs)
+- Ensure images contain clear, front-facing faces
+- Adjust similarity threshold in `settings.py` if needed
 
 ## License
 
@@ -218,4 +223,4 @@ This is an academic project. For improvements or bug fixes, please follow standa
 
 ## Support
 
-For issues or questions, please refer to the Django documentation or face-recognition library documentation.
+For issues or questions, please refer to the Django documentation or OpenCV documentation.

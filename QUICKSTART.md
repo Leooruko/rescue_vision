@@ -13,10 +13,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**Note**: Installing `dlib` and `face-recognition` may require system dependencies:
-- **Ubuntu/Debian**: `sudo apt-get install cmake libopenblas-dev liblapack-dev`
-- **macOS**: `brew install cmake`
-- **Windows**: Usually works with pip directly
+**Note**: OpenCV should be installed via system package on Raspberry Pi:
+- **Raspberry Pi (Debian)**: `sudo apt-get install python3-opencv`
+- **Ubuntu/Debian**: `sudo apt-get install python3-opencv`
+- **macOS**: `brew install opencv-python` or `pip install opencv-python`
+- **Windows**: `pip install opencv-python`
 
 ### 2. Setup Database
 
@@ -107,21 +108,28 @@ curl -X POST http://localhost:8000/api/cases/CASE_ID/images/ \
 
 ## Troubleshooting
 
-### face-recognition Installation Issues
+### OpenCV Installation Issues
 
-If you get errors installing `face-recognition`:
+If you get errors with OpenCV:
+
+**Raspberry Pi (Debian)**:
+```bash
+sudo apt-get update
+sudo apt-get install python3-opencv
+```
 
 **Linux**:
 ```bash
-sudo apt-get update
-sudo apt-get install cmake libopenblas-dev liblapack-dev
-pip install face-recognition
+sudo apt-get install python3-opencv
+# OR
+pip install opencv-python
 ```
 
 **macOS**:
 ```bash
-brew install cmake
-pip install face-recognition
+brew install opencv-python
+# OR
+pip install opencv-python
 ```
 
 ### No Face Detected
@@ -129,11 +137,13 @@ pip install face-recognition
 - Ensure images contain clear, front-facing faces
 - Check image quality and lighting
 - Try different images
+- Verify Haar Cascade classifier is loaded (check logs)
 
 ### ML Service Not Working
 
 - Check logs: `logs/rescue_vision.log`
-- Verify `face-recognition` is installed: `python -c "import face_recognition; print('OK')"`
+- Verify OpenCV is installed: `python3 -c "import cv2; print(cv2.__version__)"`
+- Ensure Haar Cascade classifier loads (check logs for cascade path)
 - Adjust similarity threshold in `settings.py` if needed
 
 ## Next Steps

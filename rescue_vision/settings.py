@@ -138,8 +138,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ML Service Configuration
 ML_SERVICE_CONFIG = {
     'MAX_ACTIVE_CASES': 20,
-    'SIMILARITY_THRESHOLD': 0.6,  # Cosine similarity threshold
-    'EMBEDDING_MODEL': 'facenet',  # Using FaceNet-like embeddings
+    'SIMILARITY_THRESHOLD': 0.6,  # Histogram similarity threshold (0-1) for OpenCV-based matching
 }
 
 # Celery Configuration (if using Celery)

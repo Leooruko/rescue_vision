@@ -69,7 +69,7 @@ def ingest_view(request):
 def process_frame_async(frame_id):
     """
     Process frame asynchronously.
-    Extract embeddings and match against missing persons.
+    Detect faces and match against missing persons using OpenCV.
     """
     try:
         frame = Frame.objects.get(id=frame_id)
@@ -77,17 +77,9 @@ def process_frame_async(frame_id):
         # Initialize ML service
         ml_service = MLService()
         
-        # Extract embedding from frame
-        frame_embedding = ml_service.extract_embedding(frame.image.path)
-        
-        if frame_embedding is None:
-            logger.warning(f"No face detected in frame {frame_id}")
-            frame.processed = True
-            frame.save()
-            return
-        
-        # Match against active missing persons
-        matched_case = ml_service.match_embedding(frame_embedding)
+        # Match faces in frame against stored missing person faces
+        # Uses OpenCV-based face detection and histogram comparison
+        matched_case = ml_service.match_face_from_image(frame.image.path)
         
         if matched_case:
             # Update frame with match
